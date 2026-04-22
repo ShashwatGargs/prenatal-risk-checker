@@ -1,3 +1,4 @@
+
 import streamlit as st
 import joblib
 import pandas as pd
@@ -156,3 +157,118 @@ Always consult a qualified doctor for proper medical advice.
 
 st.markdown("🔗 Share this tool with others:")
 st.code("https://prenatal-risk-checker-fv6e9rsnishvzu682aqrjt.streamlit.app/")
+=======
+import streamlit as st
+import joblib
+import pandas as pd
+
+# PAGE CONFIG
+st.set_page_config(
+    page_title="Pregnancy Risk Checker",
+    page_icon="🤰",
+    layout="centered"
+)
+
+# LOAD MODEL
+model = joblib.load("xgboost_model.pkl")
+encoder = joblib.load("label_encoder.pkl")
+
+# UI HEADER
+
+st.title("🤰 Pregnancy Risk Checker")
+st.caption("Simple tool to estimate pregnancy risk level")
+
+st.markdown("---")
+
+# USER INPUT (SIMPLE)
+
+age = st.slider("Your age", 15, 45, 25)
+
+preg_count = st.slider("How many times have you been pregnant?", 1, 10, 1)
+
+weeks = st.slider("How many weeks pregnant are you?", 20, 42, 30)
+
+weight = st.slider("Your weight (kg)", 40, 120, 60)
+
+height = st.slider("Your height (in feet, e.g. 5.3)", 4.0, 7.0, 5.3)
+
+bp = st.selectbox("Do you have high blood pressure?", ["No", "Yes"])
+
+sugar = st.selectbox("Do you have high blood sugar (diabetes)?", ["No", "Yes"])
+
+weakness = st.selectbox("Do you feel weak / low iron?", ["No", "Yes"])
+
+heart = st.slider("Baby heart rate (if known)", 100, 180, 130)
+
+# CONVERT INPUT
+
+bp_val = 1 if bp == "Yes" else 0
+sugar_val = 1 if sugar == "Yes" else 0
+anemia_val = 1 if weakness == "Yes" else 0
+
+data = pd.DataFrame([{
+    "Age": age,
+    "Gravida": preg_count,
+    "TT": 2,  # default safe value
+    "Gestation": weeks,
+    "Weight": weight,
+    "Height": height,
+    "Anemia": anemia_val,
+    "Jaundice": 0,
+    "FetalPosition": 0,
+    "FetalMovement": 0,
+    "FetalHeartRate": heart,
+    "Albumin": 0,
+    "Sugar": sugar_val,
+    "VDRL": 0,
+    "HBsAg": 0,
+    "SystolicBP": 120 if bp_val == 0 else 140,
+    "DiastolicBP": 80 if bp_val == 0 else 90
+}])
+
+# PREDICTION
+
+if st.button("Check Risk"):
+    pred = model.predict(data)
+    result = encoder.inverse_transform(pred)[0]
+
+    st.markdown("---")
+    st.subheader("📊 Result")
+
+    # Risk Display
+    if result.lower() == "yes":
+        st.error("🔴 High Risk")
+        st.progress(90)
+    else:
+        st.success("🟢 Low Risk")
+        st.progress(30)
+
+
+    # EXPLANATION
+
+    st.markdown("### 🧠 What this means")
+
+    if result.lower() == "yes":
+        st.write("⚠️ You may have higher risk due to factors like:")
+        st.write("- Blood pressure")
+        st.write("- Blood sugar levels")
+        st.write("- Pregnancy history")
+    else:
+        st.write("✅ Your current inputs suggest lower risk.")
+
+    # ADVICE
+
+    st.markdown("### 💡 What you should do")
+
+    if result.lower() == "yes":
+        st.write("👉 Visit a doctor soon")
+        st.write("👉 Monitor blood pressure regularly")
+        st.write("👉 Maintain a healthy diet")
+    else:
+        st.write("👉 Continue regular checkups")
+        st.write("👉 Eat a balanced diet")
+        st.write("👉 Stay active")
+
+# DISCLAIMER
+st.markdown("---")
+st.warning("⚠️ This tool is for awareness only. Always consult a doctor.")
